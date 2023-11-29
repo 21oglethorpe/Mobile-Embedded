@@ -11,26 +11,58 @@ https://askubuntu.com/questions/384991/how-do-i-play-an-audio-file-using-c-in-li
 #include <unistd.h>
 //these two headers are already included in the <Windows.h> header
 #include <thread>
+
 using namespace std;
+bool kill = false;int count = 0; bool start = false;
 void play()
 {
-      system("xterm -e \"play alarm.wav\"");
+      while(1)
+      {
+            cout<<count<<endl;
+            if(count >4)
+                  start = true;
+            if(count >14)
+            {
+                  kill = true;
+                  //return 0;
+            }
+            count +=1;
+            sleep(1);
+            if(kill == true)
+            {
+                  sleep(2);
+                  return;
+            }
+      }
 
 }
 void stop()
 {
-      system("xterm -e \"pkill play\"");
+      while(!kill){
+            cout<<"help"<<endl;
+            sleep(1);
+      }
+      system("pkill play");
 
+}
+void naur()
+{
+      while(!start)
+      {
+            cout<<"waiting"<<endl;
+            sleep(1);
+      }
+
+      system("play ./alarm.wav");
 }
 int main()
 {
-      thread first(play);
-      sleep(3);
-
       thread second(stop);
-
-      first.join();
-
+      thread first(play);
+      thread third(naur);
       second.join();
+      first.join();
+      third.join();
+
       return 0;
 }

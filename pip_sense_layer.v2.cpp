@@ -29,7 +29,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-//these two headers are already included in the <Windows.h> header
 #include <thread>
 using std::string;
 using std::list;
@@ -57,14 +56,27 @@ typedef unsigned char rating;
 
 //Global variable for the signal handler.
 bool killed = false;
+bool start = false;
+bool killalarm = false;
 //Signal handler.
 void play()
 {
-      system("xterm -e \"play alarm.wav\"");
+      while(!start)
+      {
+            cout<<"waiting";
+            sleep(1);
+      }
+    printf("PLAYING SOUND");
+    system("xterm -e \"sudo -u user /bin/bash\" -e play ./alarm.wav");
+      printf("FINISHED PLAYING SOUND");
 
 }
 void stop()
 {
+      while(!killalarm){
+            cout<<"help";
+            sleep(1);
+      }
       system("xterm -e \"pkill play\"");
 
 }
@@ -229,10 +241,9 @@ void attachPIPs(list<usb_dev_handle*> &pip_devs) {
     }
   }
 }
-
-
-int main(int ac, char** arg_vector) {
-  bool audio = false;
+int code(int ac, char** arg_vector)
+{
+    bool audio = false;
   std::cerr<<"parameters are ac:"<<ac<<std::endl;
   if (ac != 3 and ac != 4) {
     std::cerr<<"This program requires 2 arguments,"<<
@@ -265,9 +276,9 @@ int main(int ac, char** arg_vector) {
   char* signed_buf = (char*)buf;
   list<usb_dev_handle*> pip_devs;
   //Set up the USB
-  usb_init(); 
-  usb_find_busses(); 
-  usb_find_devices(); 
+  usb_init();
+  usb_find_busses();
+  usb_find_devices();
 
   //Attach new pip devices.
   attachPIPs(pip_devs);
@@ -277,9 +288,9 @@ int main(int ac, char** arg_vector) {
 
     //Set up a socket to connect to the aggregator.
     //  ClientSocket agg(AF_INET, SOCK_STREAM, 0, server_port, server_ip);
-    if ( 1 == 1 ) { 
+    if ( 1 == 1 ) {
       std::cerr<<"Connected to the GRAIL aggregation server.\n";
-      // assume we are connected here ... 
+      // assume we are connected here ...
     } else {
       std::cerr<<"Failed to connect to the GRAIL aggregation server.\n";
     }
@@ -310,12 +321,12 @@ int main(int ac, char** arg_vector) {
             int retval = -1;
             while (retval < 0 and retries_left > 0) {
               // Request the next packet from the pip
-              msg[0] = LM_GET_NEXT_PACKET;	      
-              retval = usb_bulk_write(*I, 2, signed_msg, 1, 100); 
-              memset(buf, 0, MAX_PACKET_SIZE_READ);	  
+              msg[0] = LM_GET_NEXT_PACKET;
+              retval = usb_bulk_write(*I, 2, signed_msg, 1, 100);
+              memset(buf, 0, MAX_PACKET_SIZE_READ);
 
               //Allow up to 20 extra bytes of sensor data beyond the normal packet length.
-	      if(0 == versions[*I])              
+	      if(0 == versions[*I])
 	         retval = usb_bulk_read(*I, 0x81, signed_buf+1, PACKET_LEN+20, 100);
 	      else
 		 retval = usb_bulk_read(*I, 0x82, signed_buf+1, PACKET_LEN+20, 100);
@@ -326,7 +337,7 @@ int main(int ac, char** arg_vector) {
             //If the pip fails 3 times in a row then it was probably disconnected.
             if (retval < 0) {
               usb_reset(*I);
-              usb_close(*I); 
+              usb_close(*I);
               *I = NULL;
             }
             //If the length of the message is equal to or greater than PACKET_LEN then this is a data packet.
@@ -335,7 +346,7 @@ int main(int ac, char** arg_vector) {
               pip_packet_t *pkt = (pip_packet_t *)buf;
 		++numPktsRcvd;
 
-              //Check to make sure this was a good packet.
+              //Check to make sure this was a good packet.alse)
               if ((pkt->rssi != (int) 0) and (pkt->status != 0)) {
                 unsigned char* data = (unsigned char*)pkt;
 		if(pkt->crcok){
@@ -419,21 +430,19 @@ int main(int ac, char** arg_vector) {
 
 		//humility
 		printf(" humidity: %d", data_humidity);
-
-        if(data_light  > 100&& audio == false)
+        sleep(1);
+        if(data_light  > 100 && start ==false)
         {
-          audio = true;
-
+          start = true;
             //play audio
         }
-        if(audio)
+        else if(start)
         {
-        system("xterm -e \"play alarm.wav\"");
-
           printf("sillytest%.2f\t",sd.rss);
           if(sd.rss > -30){
-            audio = false;
-            system("xterm -e \"pkill play\"");
+            killalarm = true;
+            printf("LAAAAALALALALALALALALLAAAA");
+            start = false;
 
           }
           //play audio
@@ -459,10 +468,10 @@ int main(int ac, char** arg_vector) {
           sleep(5);
 
         }*/
-		
+
 		int ids[2] = {(int) baseID, (int) netID};
 		int data[3] = {data_light, data_temp, data_humidity};
-		
+
 		//if (netID == 3377)
 		  //sendPost(hostNport, unix_time, ids, sd.rss, data );
 		printf("\n");
@@ -482,12 +491,12 @@ printf("\n");
 */
                   //Send the sample data as long as it meets the min RSS constraint
                   if (sd.rss > min_rss) {
-                    // --rpm agg.send(sensor_aggregator::makeSampleMsg(sd));		    
+                    // --rpm agg.send(sensor_aggregator::makeSampleMsg(sd));
                   }
                 }
               }
-							//if((PACKET_LEN == retval)&&(pkt->rssi == (int) 0))							
-							//{printf("Heartbeat!!\n");}							
+							//if((PACKET_LEN == retval)&&(pkt->rssi == (int) 0))
+							//{printf("Heartbeat!!\n");}
             }
           }
         }
@@ -509,8 +518,18 @@ printf("\n");
   //Clean up the pip connections before exiting.
   for (list<usb_dev_handle*>::iterator I = pip_devs.begin(); I != pip_devs.end(); ++I) {
     usb_reset(*I);
-    usb_close (*I); 
+    usb_close (*I);
   }
+  return 0;
 }
 
+int main(int ac, char** arg_vector) {
+      thread second(stop);
+      thread third(play);
+      thread first(code,ac,arg_vector);
+      second.join();third.join();
+      first.join();
+
+
+}
 
