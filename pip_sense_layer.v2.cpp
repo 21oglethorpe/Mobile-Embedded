@@ -1,6 +1,8 @@
 //steps needed to take: /lib/systemd/user, edit pulseaudio.service and comment line that says "ConditionUser != root". For audio, alsamixer, edit soundcards, make sure speaker is not at 0. Also to start service, run "pulseaudio --system"
 // g++ -g -std=gnu++0x -o pip_sense.v2 pip_sense_layer.v2.cpp -lusb
-// room temperature: 256+78, 94 (thermostat says 68, 69). On metal touching outside: 233
+// room temperature: 256+78, 94 (thermostat says 68, 69). On metal touching outside: 233. 43,
+// 41: 113, 69:350
+//28:237
 //sudo stdbuf -o0 ./pip_sense.v2 l l | stdbuf -o0 grep TX:03403^C
 //sudo stdbuf -o0 /home/user/Downloads/ReceiverCode/pip_sense.v2 l l | stdbuf -o0 grep TX:03403^C
 
@@ -442,9 +444,9 @@ int code(int ac, char** arg_vector)
                                     printf("light: %d", data_light);
 
                                     //temperature
-                                    //printf("temp data: %i", (unsigned int) sd.sense_data[2]*256);
-                                    //printf("temp data: %i", (unsigned int) sd.sense_data[3]);
-                                    float slope = 13.21; //15.44, 13.21
+                                    printf("temp data: %i", (unsigned int) sd.sense_data[2]*256);
+                                    printf("temp data: %i", (unsigned int) sd.sense_data[3]);
+                                    float slope = 13.21; //8.46,15.44, 13.21
                                     float offset = 69.78; // 40.12,56.58,69.78
                                     celc = ((float)data_temp - offset)/slope;
                                     printf(" temp (C): %.2f", celc);
@@ -461,7 +463,7 @@ int code(int ac, char** arg_vector)
                                     //humility
                                     printf(" humidity: %d", data_humidity);
                                     sleep(1);
-                                    if(data_light  > 200 && start ==false)
+                                    if(data_light  > 250 && start ==false)
                                     {
                                         start = true;
                                             //play audio
@@ -469,7 +471,7 @@ int code(int ac, char** arg_vector)
                                     else if(start)
                                     {
                                         //printf("sillytest%.2f\t",sd.rss);
-                                        if(sd.rss > -28){
+                                        if(sd.rss > -35){
                                             killalarm = true;
                                             //printf("LAAAAALALALALALALALALLAAAA");
                                             start = false;
